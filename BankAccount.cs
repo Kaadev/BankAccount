@@ -1,21 +1,11 @@
-/* COMPORTAMENTOS DA CLASSE BankAccount:
+namespace Classes; //namespace
 
--Ela tem um número com 10 dígitos que identifica exclusivamente a conta bancária.
--Ela tem uma cadeia de caracteres que armazena o nome ou os nomes dos proprietários.
--O saldo pode ser recuperado.
--Ela aceita depósitos.
--Ele aceita saques.
--O saldo inicial deve ser positivo.
--Os saques não podem resultar em um saldo negativo.*/
-
-namespace Classes;
-
-public class BankAccount // Classe
+public class BankAccount //classe
 {
-  private static int accountNumberSeed = 1234567890; // Campo private: só pode ser acessado pelo código dentro da classe BankAccount. & Static: é compartilhado por todos os objetos BankAccount. 
-  public string Number { get; } // Propriedades são elementos de dados que podem ter um código que impõe a validação ou outras regras.
-  public string Owner { get; set; }  // Propriedades
-  public decimal Balance // Essa propriedade calcula o saldo quando outro programador solicita o valor. Seu cálculo enumera todas as transações e fornece a soma como o saldo atual.
+  private static int accountNumberSeed = 1234567890; //campo
+  public string Number { get; } //propriedade
+  public string Owner { get; set; } //propriedade
+  public decimal Balance //propriedade
   {
     get
     {
@@ -28,16 +18,22 @@ public class BankAccount // Classe
     }
   }
 
-  public BankAccount(string name, decimal initialBalance) // Construtor: Mesmo nome que a classe, são chamados quando você cria um objeto usando new.
+  private readonly decimal _minimumBalance;
+
+  public BankAccount(string name, decimal initialBalance) : this(name, initialBalance, 0) { }
+
+  public BankAccount(string name, decimal initialBalance, decimal minimumBalance)
   {
-    Number = accountNumberSeed.ToString(); // algoritimo responsável por atribuir N° a conta bancária
+    Number = accountNumberSeed.ToString();
     accountNumberSeed++;
 
     Owner = name;
-    MakeDeposit(initialBalance, DateTime.Now, "Initial balance");
+    _minimumBalance = minimumBalance;
+    if (initialBalance > 0)
+      MakeDeposit(initialBalance, DateTime.Now, "Initial balance");
   }
 
-  private List<Transaction> allTransactions = new List<Transaction>(); // Lista de transações
+  private List<Transaction> allTransactions = new List<Transaction>(); // Lista
 
   public void MakeDeposit(decimal amount, DateTime date, string note) // métodos (blocos de código que executam uma única função) lançará uma exceção se a quantidade do depósito não for maior que 0.
   {
@@ -49,18 +45,29 @@ public class BankAccount // Classe
     allTransactions.Add(deposit);
   }
 
-  public void MakeWithdrawal(decimal amount, DateTime date, string note) // métodos (blocos de código que executam uma única função). gera uma exceção se a quantidade de retirada não for maior que 0 ou se a aplicação da retirada resultar em um saldo negativo
+  public void MakeWithdrawal(decimal amount, DateTime date, string note)
   {
     if (amount <= 0)
     {
-      throw new ArgumentOutOfRangeException(nameof(amount), "Amount of withdrawal must be positive"); // exceção
+      throw new ArgumentOutOfRangeException(nameof(amount), "Amount of withdrawal must be positive");
     }
-    if (Balance - amount < 0)
-    {
-      throw new InvalidOperationException("Not sufficient funds for this withdrawal"); // exceção
-    }
-    var withdrawal = new Transaction(-amount, date, note);
+    Transaction? overdraftTransaction = CheckWithdrawalLimit(Balance - amount < _minimumBalance);
+    Transaction? withdrawal = new(-amount, date, note);
     allTransactions.Add(withdrawal);
+    if (overdraftTransaction != null)
+      allTransactions.Add(overdraftTransaction);
+  }
+
+  protected virtual Transaction? CheckWithdrawalLimit(bool isOverdrawn)
+  {
+    if (isOverdrawn)
+    {
+      throw new InvalidOperationException("Not sufficient funds for this withdrawal");
+    }
+    else
+    {
+      return default;
+    }
   }
   public string GetAccountHistory()
   {
@@ -76,5 +83,6 @@ public class BankAccount // Classe
 
     return report.ToString();
   }
-}
 
+  public virtual void PerformMonthEndTransactions() { }
+}
